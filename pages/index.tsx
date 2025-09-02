@@ -1,5 +1,5 @@
 import { range } from "@/utils/array/range";
-import { ReactElement } from "react";
+import { ReactElement, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import apiFetch from "@/components/apiFetch";
@@ -10,23 +10,45 @@ import { DefaultLayout } from "@/components/DefaultLayout";
 
 const totalCardCount = 151;
 const maxPageSize = 10;
-const queries = range(0, 16).map((i) => ({
-  offset: maxPageSize * i,
-  limit: Math.min(maxPageSize * (i + 1), totalCardCount) - maxPageSize * i,
-}));
+const initialPageSize = 20; // Start with fewer Pokemon for better LCP
 
 export default function Home() {
   const router = useRouter();
-  const { data } = useQuery<Array<ApiListResult<ListPokemonResponse>>>({
-    queryKey: ["/api/pokemon"],
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(initialPageSize);
+  
+  // Calculate how many queries we need for the current page
+  const pokemonNeeded = (currentPage + 1) * itemsPerPage;
+  const queriesNeeded = Math.ceil(pokemonNeeded / maxPageSize);
+  
+  const queries = range(0, queriesNeeded).map((i) => ({
+    offset: maxPageSize * i,
+    limit: Math.min(maxPageSize * (i + 1), totalCardCount) - maxPageSize * i,
+  }));
+
+  const { data, isLoading } = useQuery<Array<ApiListResult<ListPokemonResponse>>>({
+    queryKey: ["/api/pokemon", queriesNeeded],
     queryFn: ({ queryKey }) =>
-      Promise.all(queries.map((query) => apiFetch(queryKey.join("/"), query))),
+      Promise.all(queries.map((query) => apiFetch("/api/pokemon", query))),
     enabled: true,
   });
 
-  const pokemonList = data?.flatMap(apiResult => apiResult.results);
+  const allLoadedPokemon = data?.flatMap(apiResult => apiResult.results) || [];
+  
+  // Filter for search term first
+  const searchTerm = String(router.query.q ?? '').toLowerCase();
+  const searchFilteredPokemon = searchTerm
+    ? allLoadedPokemon.filter(({pokemon}) => 
+      pokemon?.name.includes(searchTerm) || searchTerm?.includes(pokemon?.name.toLowerCase() ?? '')
+    ) 
+    : allLoadedPokemon;
 
-  if (!pokemonList) {
+  // Then paginate the results
+  const displayedPokemon = searchFilteredPokemon.slice(0, (currentPage + 1) * itemsPerPage);
+  const hasMorePokemon = searchFilteredPokemon.length > displayedPokemon.length || 
+                        (!searchTerm && pokemonNeeded < totalCardCount);
+
+  if (isLoading && displayedPokemon.length === 0) {
     return (
       <div>
         <ul className="grid md:grid-cols-2 grid-cols-1 gap-px bg-black p-px">
@@ -38,14 +60,26 @@ export default function Home() {
     );
   }
 
-  const searchTerm = String(router.query.q ?? '').toLowerCase();
-  const filteredPokemonList = searchTerm
-    ? pokemonList.filter(({pokemon}) => 
-      pokemon?.name.includes(searchTerm) || searchTerm?.includes(pokemon?.name.toLowerCase() ?? '')
-    ) 
-    : pokemonList;
+  const handleLoadMore = () => {
+    setCurrentPage(prev => prev + 1);
+  };
 
-  return <PokemonList pokemonList={filteredPokemonList} />;
+  return (
+    <div>
+      <PokemonList pokemonList={displayedPokemon} />
+      {hasMorePokemon && (
+        <div className="flex justify-center p-8">
+          <button
+            onClick={handleLoadMore}
+            disabled={isLoading}
+            className="bg-blue-500 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-2 px-4 rounded"
+          >
+            {isLoading ? 'Loading...' : 'Load More Pokemon'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Layout({page}: {page: ReactElement}) {

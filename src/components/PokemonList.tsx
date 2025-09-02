@@ -22,6 +22,7 @@ export default function PokemonList({pokemonList}: Props) {
               pokemon={pokemon}
               species={species}
               evolution={evolution}
+              priority={index < 4} // Prioritize the first 4 images for LCP
             />
           </li>
         ))}

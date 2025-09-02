@@ -12,9 +12,10 @@ interface Props {
   pokemon: ApiPokemon | undefined;
   species: ApiSpecies | undefined;
   evolution: ApiEvolution | undefined;
+  priority?: boolean; // For LCP optimization
 }
 
-export default function HomePageItem({ pokemon, species, evolution }: Props) {
+export default function HomePageItem({ pokemon, species, evolution, priority = false }: Props) {
   const { addToCart } = useShoppingCart();
   const [showAddToCartPopover, setShowAddToCartPopover] = useState(false);
 
@@ -27,7 +28,7 @@ export default function HomePageItem({ pokemon, species, evolution }: Props) {
       href={`/pokemon/${pokemon?.name}`}
       className="flex grow relative store-item"
     >
-      <PokemonCardView pokemon={pokemon}>
+      <PokemonCardView pokemon={pokemon} priority={priority}>
         <PokemonPrice
           pokemon={pokemon}
           species={species}

@@ -4,6 +4,9 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
+  images: {
+    domains: ['raw.githubusercontent.com'],
+  },
 };
 
 const { withSentryConfig } = require("@sentry/nextjs");
