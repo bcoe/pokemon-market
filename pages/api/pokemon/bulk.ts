@@ -79,7 +79,7 @@ export default respondWith(async function ApiBulkPokemon(req: NextApiRequest) {
     pokemon: serializePokemon(data?.pokemon),
     species: serializeSpecies(data?.species),
     evolution: serializeEvolution(data?.evolution),
-  }));
+  })) as any;
   
   return {
     count: allPokemonData.length,
