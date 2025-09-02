@@ -1,4 +1,3 @@
-import { range } from "@/utils/array/range";
 import { ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
@@ -9,22 +8,17 @@ import PokemonList from "@/components/PokemonList";
 import { DefaultLayout } from "@/components/DefaultLayout";
 
 const totalCardCount = 151;
-const maxPageSize = 10;
-const queries = range(0, 16).map((i) => ({
-  offset: maxPageSize * i,
-  limit: Math.min(maxPageSize * (i + 1), totalCardCount) - maxPageSize * i,
-}));
 
 export default function Home() {
   const router = useRouter();
-  const { data } = useQuery<Array<ApiListResult<ListPokemonResponse>>>({
-    queryKey: ["/api/pokemon"],
+  const { data } = useQuery<ApiListResult<ListPokemonResponse>>({
+    queryKey: ["/api/pokemon/bulk"],
     queryFn: ({ queryKey }) =>
-      Promise.all(queries.map((query) => apiFetch(queryKey.join("/"), query))),
+      apiFetch(queryKey.join("/"), { offset: 0, limit: totalCardCount }),
     enabled: true,
   });
 
-  const pokemonList = data?.flatMap(apiResult => apiResult.results);
+  const pokemonList = data?.results;
 
   if (!pokemonList) {
     return (
